@@ -127,3 +127,115 @@
 - 노드에서 다른 프로그램을 실행하고 싶거나 명령어를 수행하고 싶을 때 사용
 - 현재 노드 프로세스 외에 새로운 프로세스를 띄워서 명령을 수행함.
 - 출력 값을 직접 받아와야 함.
+
+## fs
+
+- 파일 시스템에 접근하는 모듈 - 사용할 때 조심해야 함!!
+- 파일/폴더 생성, 삭제, 읽기, 쓰기 가능
+- 웹 브라우저에서는 제한적이었으나 노드는 권한을 가지고 있음
+- fs는 콜백임
+- fs를 프로미스로 사용하고 싶을 떄 require(‘fs’).promises; 로 선언하면 됨
+- 노드는 대부분의 내장 모듈 메서드를 비동기 방식으로 처리
+  - 비동기는 코드의 순서와 실행 순서가 일치하지 않는 것을 의미
+  - 일부는 동기 방식으로 사용 가능
+- 비동기는 콜백이 발생함 이를 사용하여 순서 유지!! (콜백 지옥!!)-> promise로 사용하자 ㅋㅋ
+- 동기를 사용할 때에 주의하자!
+- [fs 문서](https://nodejs.org/dist/latest-v16.x/docs/api/fs.html)
+
+## 버퍼와 스트림
+
+- 버퍼 : 일정한 크기로 모아두는 데이터
+  - 일정한 크기가 되면 한 번에 처리
+
+```js
+const buffer = Buffer.from("저를 버퍼로 바꿔보세요");
+console.log("from():", buffer);
+console.log("length:", buffer.length);
+console.log("toString():", buffer.toString());
+
+const array = [
+  Buffer.from("띄엄 "),
+  Buffer.from("띄엄 "),
+  Buffer.from("띄어쓰기"),
+];
+const buffer2 = Buffer.concat(array);
+console.log("concat():", buffer2.toString());
+
+const buffer3 = Buffer.alloc(5);
+console.log("alloc():", buffer3);
+```
+
+- 스트림 : 데이터의 흐름
+  - 일정한 크기로 나눠서 여러 번에 걸쳐서 처리
+
+```js
+const fs = require("fs");
+
+const readStream = fs.createReadStream("./readme3.txt", { highWaterMark: 16 });
+const data = [];
+
+readStream.on("data", (chunk) => {
+  data.push(chunk);
+  console.log("data :", chunk, chunk.length);
+});
+
+readStream.on("end", () => {
+  console.log("end :", Buffer.concat(data).toString());
+});
+
+readStream.on("error", (err) => {
+  console.log("error :", err);
+});
+```
+
+```js
+const fs = require("fs");
+
+const writeStream = fs.createWriteStream("./writeme2.txt");
+writeStream.on("finish", () => {
+  console.log("파일 쓰기 완료");
+});
+
+writeStream.write("이 글을 씁니다.\n");
+writeStream.write("한 번 더 씁니다.");
+writeStream.end();
+```
+
+## pipe
+
+- pipe로 여러개의 스트림을 이을 수 있음.
+
+## 스레드 풀
+
+- fs, crypto, zlib 모듈의 메서드를 실행할 때는 백그라운드에서 동시에 실행됨.
+- 노드는 백그라운드에서 돌아가는 작업을 4개 씩 동시에 돌림
+- UV_THREADPOOL_SIZE=개수 로 조절 가능
+- 윈도우는 앞에 'SET ' 을 붙혀줘야함.
+
+## events
+
+- 커스텀 이벤트를 만들 수 있음.
+
+## 에러 처리
+
+- 기본적으로 try catch문으로 예외 처리
+- 노드 비동기 메서드의 에러는 따로 처리하지 않아도 됨 (콜백 함수에서 에러 객체 제공)
+- 프로미스의 에러는 따로 처리하지 않아도 됨
+- 예측 불가능한 에러 처리하기 (아래)
+  > ```js
+  > process.on("uncaughtException", (err) => {
+  >   console.error("예기치 못한 에러", err);
+  > });
+  >
+  > setInterval(() => {
+  >   throw new Error("서버를 고장내주마!");
+  > }, 1000);
+  >
+  > setTimeout(() => {
+  >   console.log("실행됩니다");
+  > }, 2000);
+  > ```
+  >
+  > - 콜백 함수의 동작이 보장되지 않음
+  > - 따라서 복구 작업용으로 쓰는 것은 부적합
+  > - 에러 내용 기록 용으로만 쓰는게 좋음!
